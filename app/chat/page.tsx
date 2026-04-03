@@ -22,8 +22,8 @@ export default function ChatPage() {
   useEffect(() => {
     // WebSocket connect করো
     const ws = new WebSocket(
-      wss://mahabub-unlocked-ai-support-saas.hf.space/chat/ws/${companyId}/${sessionId}
-    );
+  `wss://mahabub-unlocked-ai-support-saas.hf.space/chat/ws/${companyId}/${sessionId}`
+);
 
     ws.onopen = () => setConnected(true);
 
