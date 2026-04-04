@@ -14,12 +14,13 @@ interface Message {
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "system", content: "👋 Hello! How can I help you today?" }
+    { role: "system", content: "Hello! I'm your AI support assistant. How can I help you today?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -27,12 +28,10 @@ export default function ChatPage() {
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
     const userMessage = input;
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setLoading(true);
-
     try {
       const response = await fetch(`${API}/chat/message`, {
         method: "POST",
@@ -44,7 +43,6 @@ export default function ChatPage() {
           customer_name: "Guest"
         })
       });
-
       const data = await response.json();
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -54,87 +52,125 @@ export default function ChatPage() {
         source: data.source,
         ticket_id: data.ticket_id
       }]);
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, {
         role: "assistant",
         content: "Sorry, something went wrong. Please try again."
       }]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
-  const sentimentEmoji = (s?: string) => {
-    const map: Record<string, string> = {
-      angry: "😡", frustrated: "😟",
-      "angry/frustrated": "😡", neutral: "😐", happy: "😄"
-    };
-    return s ? map[s] || "😐" : "";
+  const priorityColors: Record<string, string> = {
+    urgent: "bg-red-500/20 text-red-400 border-red-500/30",
+    high: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    medium: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    low: "bg-gray-500/20 text-gray-400 border-gray-500/30",
   };
 
-  const priorityColor = (p?: string) => {
-    const map: Record<string, string> = {
-      urgent: "text-red-500", high: "text-orange-500",
-      medium: "text-blue-500", low: "text-gray-500"
-    };
-    return p ? map[p] || "" : "";
+  const sentimentEmoji: Record<string, string> = {
+    angry: "😡", "angry/frustrated": "😡",
+    frustrated: "😟", neutral: "😐", happy: "😄"
   };
+
+  const quickReplies = [
+    "My payment failed",
+    "How to reset password?",
+    "Cancel subscription",
+    "Refund policy",
+  ];
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 flex items-center gap-3">
-        <div className="text-2xl">🤖</div>
-        <div>
-          <div className="font-bold text-lg">AI Customer Support</div>
-          <div className="text-sm opacity-80">🟢 Online</div>
+    <div className="flex flex-col h-screen bg-[#050510] text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] bg-[#050510]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-blue-500 rounded-xl flex items-center justify-center text-lg">
+              🤖
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-[#050510]"></div>
+          </div>
+          <div>
+            <div className="font-semibold text-sm">AI Support Assistant</div>
+            <div className="text-xs text-green-400">● Online — Powered by LLaMA 3.3</div>
+          </div>
         </div>
-        <a href="/dashboard" className="ml-auto bg-white bg-opacity-20 px-4 py-1 rounded-full text-sm hover:bg-opacity-30">
+        <a href="/dashboard" className="text-xs text-white/40 hover:text-white/70 bg-white/5 px-3 py-1.5 rounded-lg transition">
           📊 Dashboard
         </a>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "system" && (
-              <div className="text-center text-gray-500 text-sm italic w-full">{msg.content}</div>
+              <div className="w-full text-center">
+                <span className="text-xs text-white/30 bg-white/5 px-4 py-1.5 rounded-full">
+                  {msg.content}
+                </span>
+              </div>
             )}
             {msg.role === "user" && (
-              <div className="max-w-xs lg:max-w-md">
-                <div className="bg-purple-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm">
+              <div className="max-w-[75%]">
+                <div className="bg-gradient-to-br from-violet-600 to-blue-600 px-4 py-3 rounded-2xl rounded-tr-sm text-sm leading-relaxed shadow-lg shadow-violet-500/20">
                   {msg.content}
                 </div>
               </div>
             )}
             {msg.role === "assistant" && (
-              <div className="max-w-xs lg:max-w-md">
+              <div className="max-w-[80%] space-y-2">
                 <div className="flex items-start gap-2">
-                  <div className="text-2xl">🤖</div>
-                  <div>
-                    <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
-                      {msg.content}
-                    </div>
-                    <div className="flex gap-2 mt-1 text-xs text-gray-500">
-                      {msg.sentiment && <span>{sentimentEmoji(msg.sentiment)} {msg.sentiment}</span>}
-                      {msg.priority && <span className={priorityColor(msg.priority)}>● {msg.priority}</span>}
-                      {msg.source && <span>📚 {msg.source}</span>}
-                      {msg.ticket_id && <span className="text-orange-500">🎟 Ticket #{msg.ticket_id}</span>}
-                    </div>
+                  <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-blue-500 rounded-lg flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                    🤖
+                  </div>
+                  <div className="bg-white/[0.06] border border-white/[0.08] px-4 py-3 rounded-2xl rounded-tl-sm text-sm leading-relaxed">
+                    {msg.content}
                   </div>
                 </div>
+                {(msg.sentiment || msg.priority || msg.ticket_id) && (
+                  <div className="flex gap-2 ml-9 flex-wrap">
+                    {msg.sentiment && (
+                      <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded-full">
+                        {sentimentEmoji[msg.sentiment] || "😐"} {msg.sentiment}
+                      </span>
+                    )}
+                    {msg.priority && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${priorityColors[msg.priority] || ""}`}>
+                        ● {msg.priority}
+                      </span>
+                    )}
+                    {msg.source && (
+                      <span className="text-xs text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
+                        📚 {msg.source}
+                      </span>
+                    )}
+                    {msg.ticket_id && (
+                      <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                        🎟 Ticket #{msg.ticket_id}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
+
         {loading && (
           <div className="flex justify-start">
             <div className="flex items-center gap-2">
-              <div className="text-2xl">🤖</div>
-              <div className="bg-white px-4 py-3 rounded-2xl shadow-sm">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+              <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-blue-500 rounded-lg flex items-center justify-center text-xs">
+                🤖
+              </div>
+              <div className="bg-white/[0.06] border border-white/[0.08] px-4 py-3 rounded-2xl rounded-tl-sm">
+                <div className="flex gap-1.5 items-center">
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:"0.15s"}}></div>
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:"0.3s"}}></div>
                 </div>
               </div>
             </div>
@@ -143,22 +179,39 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t p-4">
-        <div className="flex gap-2 max-w-4xl mx-auto">
+      {/* Quick replies */}
+      {messages.length <= 1 && (
+        <div className="px-4 pb-3 flex gap-2 flex-wrap">
+          {quickReplies.map((q, i) => (
+            <button
+              key={i}
+              onClick={() => { setInput(q); inputRef.current?.focus(); }}
+              className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition text-white/60 hover:text-white"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="px-4 pb-6 pt-3 border-t border-white/[0.07]">
+        <div className="flex gap-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-violet-500/50 transition-all">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Type your message..."
-            className="flex-1 border border-gray-200 rounded-full px-5 py-3 focus:outline-none focus:border-purple-400"
+            className="flex-1 bg-transparent text-sm outline-none text-white placeholder:text-white/30"
           />
           <button
             onClick={sendMessage}
-            disabled={loading}
-            className="bg-purple-600 text-white px-6 py-3 rounded-full font-bold hover:bg-purple-700 disabled:opacity-50 transition"
+            disabled={loading || !input.trim()}
+            className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2 rounded-xl text-sm font-medium transition-all"
           >
-            Send
+            Send ↑
           </button>
         </div>
       </div>
